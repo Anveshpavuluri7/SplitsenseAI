@@ -21,18 +21,27 @@ DEFAULT_CATEGORIES = [
 ]
 
 
+_classifier_failed = False  # set True on OOM so we stop retrying
+
 def get_classifier():
     """Lazy-load the zero-shot classification pipeline."""
-    global _classifier
+    global _classifier, _classifier_failed
+    if _classifier_failed:
+        return None
     if _classifier is None:
-        logger.info("Loading zero-shot classifier (bart-large-mnli)...")
-        from transformers import pipeline
-        _classifier = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli",
-            device=-1,  # CPU only
-        )
-        logger.info("Zero-shot classifier loaded.")
+        try:
+            logger.info("Loading zero-shot classifier (bart-large-mnli)...")
+            from transformers import pipeline
+            _classifier = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                device=-1,  # CPU only
+            )
+            logger.info("Zero-shot classifier loaded.")
+        except (MemoryError, Exception) as e:
+            logger.warning(f"Zero-shot classifier unavailable (likely OOM on free tier): {e}")
+            _classifier_failed = True
+            return None
     return _classifier
 
 

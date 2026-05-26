@@ -37,8 +37,11 @@ async def lifespan(app: FastAPI):
     import asyncio
     logger.info(f"🚀 Starting {settings.APP_NAME} ({settings.APP_ENV})")
     logger.info(f"📡 API docs at http://localhost:8000/docs")
-    logger.info("Preloading ML models in background thread...")
-    asyncio.get_event_loop().run_in_executor(None, _preload_models)
+    # Skip heavy ML preload in production — free tier only has 512MB RAM
+    # BART-MNLI alone is 1.6GB and will OOM the process
+    if settings.APP_ENV != "production":
+        logger.info("Preloading ML models in background thread...")
+        asyncio.get_event_loop().run_in_executor(None, _preload_models)
     yield
     logger.info(f"👋 Shutting down {settings.APP_NAME}")
 
