@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: splitsenseai-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: splitsenseai-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: CORS_ORIGINS
+        value: "*"   # replace with https://your-app.streamlit.app after deploy
+      - key: GROQ_API_KEY
+        sync: false  # set manually in Render dashboard
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+
+databases:
+  - name: splitsenseai-db
+    plan: free
+    region: oregon

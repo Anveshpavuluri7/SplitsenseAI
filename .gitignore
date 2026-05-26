@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Env
+.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ML models (large files)
+ml/models/*.pkl
+ml/models/*.bin
+ml/models/*.pt
+*.onnx
+
+# Data
+data/uploads/
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Streamlit secrets (never commit)
+.streamlit/secrets.toml
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/

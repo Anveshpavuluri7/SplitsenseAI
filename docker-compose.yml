@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: splitsenseai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/splitsenseai
+      SECRET_KEY: dev-secret-key-change-in-production
+      APP_ENV: development
+      CORS_ORIGINS: "http://localhost:8501"
+      # Add your Cloudinary credentials here or in a .env file
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ml/models:/app/ml/models
+      - ./data:/app/data
+      # Cache downloaded ML models between container restarts
+      - easyocr_cache:/root/.EasyOCR
+      - hf_cache:/root/.cache/huggingface
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  easyocr_cache:
+  hf_cache:
