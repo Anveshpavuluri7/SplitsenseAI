@@ -235,4 +235,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 ---
 ⭐ Star this repo if you found it useful!
 
-**Built with ❤️ by [Anvesh Pavuluri](https://github.com/Anveshpavuluri7)** — AI/ML Engineering Portfolio Project
+**Built with ❤️ by [Anvesh Pavuluri](https://github.com/Anveshpavuluri7)** 
