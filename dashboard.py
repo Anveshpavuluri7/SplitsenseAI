@@ -491,37 +491,89 @@ def page_splits():
     # Warn if the group only has one member (the uploader)
     if len(members) == 1 and members[0]["user_id"] == payer_id:
         st.warning(
-            "You're the only member in **Galena Trip**. "
+            f"You're the only member in **{sel_group_name}**. "
             "Add other people to the group first — settlements only work when items are "
             "assigned to members other than the bill payer."
         )
 
     st.markdown("### Assign Items to Members")
-    st.caption("Assign each item to whoever consumed it. Members other than the uploader will owe them money.")
+    st.caption("Personal = one person pays the full item. Equal = divide evenly among selected members. Percentage = custom share per person.")
 
+    member_names = list(member_options.keys())
     assignments = []
-    cols = st.columns([3, 1, 1, 2])
-    cols[0].markdown("**Item**")
-    cols[1].markdown("**Qty**")
-    cols[2].markdown("**Price**")
-    cols[3].markdown("**Assigned to**")
 
     for item in items:
-        c1, c2, c3, c4 = st.columns([3, 1, 1, 2])
-        c1.write(item["name"])
-        c2.write(item["quantity"])
-        c3.write(f"${item['price']:.2f}")
-        assigned = c4.selectbox("", list(member_options.keys()), key=f"assign_{item['id']}", label_visibility="collapsed")
-        assignments.append({
-            "item_id":    item["id"],
-            "user_id":    member_options[assigned],
-            "split_type": "personal",
-            "share_value": 1.0,
-        })
+        total_item = round(float(item["price"]) * item["quantity"], 2)
+        with st.container(border=True):
+            left, right = st.columns([2, 3])
+            left.markdown(f"**{item['name']}**")
+            left.caption(f"Qty {item['quantity']} × ${item['price']:.2f} = **${total_item:.2f}**")
 
-    # Warn if all items go to the payer (no debt will be created)
+            with right:
+                split_mode = st.radio(
+                    "Split type", ["Personal", "Equal", "Percentage"],
+                    key=f"mode_{item['id']}", horizontal=True, label_visibility="collapsed"
+                )
+
+                if split_mode == "Personal":
+                    assigned = st.selectbox(
+                        "Assigned to", member_names,
+                        key=f"p_{item['id']}", label_visibility="collapsed"
+                    )
+                    assignments.append({
+                        "item_id":    item["id"],
+                        "user_id":    member_options[assigned],
+                        "split_type": "personal",
+                        "share_value": 1.0,
+                    })
+
+                elif split_mode == "Equal":
+                    selected = st.multiselect("Split among", member_names, key=f"eq_{item['id']}")
+                    if not selected:
+                        st.caption("Select at least one member.")
+                    else:
+                        per_person = total_item / len(selected)
+                        st.caption(f"${per_person:.2f} each × {len(selected)} people")
+                        for uname in selected:
+                            assignments.append({
+                                "item_id":    item["id"],
+                                "user_id":    member_options[uname],
+                                "split_type": "equal",
+                                "share_value": None,
+                            })
+
+                else:  # Percentage
+                    selected = st.multiselect("Split among", member_names, key=f"pct_{item['id']}")
+                    if not selected:
+                        st.caption("Select members to assign percentages.")
+                    else:
+                        total_pct = 0.0
+                        for uname in selected:
+                            default_pct = round(100.0 / len(selected), 1)
+                            pct = st.number_input(
+                                f"{uname} %", min_value=0.0, max_value=100.0,
+                                value=default_pct, step=5.0, format="%.1f",
+                                key=f"pct_val_{item['id']}_{uname}"
+                            )
+                            total_pct += pct
+                            assignments.append({
+                                "item_id":    item["id"],
+                                "user_id":    member_options[uname],
+                                "split_type": "percentage",
+                                "share_value": pct,
+                            })
+                        ok_pct = abs(total_pct - 100.0) <= 0.5
+                        st.caption(f"Total: {total_pct:.1f}% {'✓' if ok_pct else '⚠️ must equal 100%'}")
+
+    # Warn about items with no members selected (equal/pct with empty multiselect)
+    assigned_item_ids = {a["item_id"] for a in assignments}
+    unassigned = [it for it in items if it["id"] not in assigned_item_ids]
+    if unassigned:
+        st.warning(f"{len(unassigned)} item(s) have no members selected and will be skipped.")
+
+    # Warn if all assignments go to the payer (no debt created)
     non_payer = [a for a in assignments if a["user_id"] != payer_id]
-    if not non_payer and len(members) > 1:
+    if assignments and not non_payer and len(members) > 1:
         st.warning(
             "All items are currently assigned to you (the bill payer). "
             "No settlement debt will be created. Assign at least one item to another member."
