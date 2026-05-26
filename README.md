@@ -4,6 +4,13 @@
 
 A production-grade full-stack application that uses Groq Llama Vision for receipt OCR, ML-powered expense categorization, and smart multi-user bill splitting with real-time analytics.
 
+## Live Demo
+
+- Frontend: [splitsenseai-uu3do6ywpzddeax3mfy8qq.streamlit.app](https://splitsenseai-uu3do6ywpzddeax3mfy8qq.streamlit.app)
+- Backend API: [splitsenseai-api.onrender.com/docs](https://splitsenseai-api.onrender.com/docs)
+
+> The backend runs on Render's free tier and may take ~30s to wake up from a cold start.
+
 ---
 
 ## Architecture
