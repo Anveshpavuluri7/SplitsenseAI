@@ -39,32 +39,49 @@ st.markdown("""
 def _h():
     return {"Authorization": f"Bearer {st.session_state.get('token', '')}"}
 
+_COLD_START_MSG = "detail"
+_COLD_START_ERR = "Backend is waking up (cold start can take ~30s on free tier). Please wait and try again."
+
+def _safe_json(r):
+    try:
+        return r.json()
+    except Exception:
+        if r.status_code in (502, 503, 504):
+            return {"detail": _COLD_START_ERR}
+        return {"detail": f"Server returned a non-JSON response (HTTP {r.status_code})"}
+
 def api_get(path, params=None):
     try:
-        r = requests.get(f"{API}{path}", headers=_h(), params=params, timeout=15)
-        return r.json() if r.ok else None
+        r = requests.get(f"{API}{path}", headers=_h(), params=params, timeout=60)
+        return _safe_json(r) if r.ok else None
+    except requests.exceptions.Timeout:
+        return None
     except Exception:
         return None
 
 def api_post(path, json=None, files=None, data=None, expected=201):
     try:
-        timeout = 120 if files else 30
+        timeout = 120 if files else 60
         r = requests.post(f"{API}{path}", headers=_h(), json=json, files=files, data=data, timeout=timeout)
-        return r.json(), r.status_code == expected
+        return _safe_json(r), r.status_code == expected
+    except requests.exceptions.Timeout:
+        return {"detail": _COLD_START_ERR}, False
+    except requests.exceptions.ConnectionError:
+        return {"detail": "Cannot reach backend — check API_BASE_URL is set in Streamlit secrets."}, False
     except Exception as e:
         return {"detail": str(e)}, False
 
 def api_delete(path):
     try:
-        r = requests.delete(f"{API}{path}", headers=_h(), timeout=10)
+        r = requests.delete(f"{API}{path}", headers=_h(), timeout=30)
         return r.ok
     except Exception:
         return False
 
 def api_patch(path, json=None):
     try:
-        r = requests.patch(f"{API}{path}", headers=_h(), json=json, timeout=15)
-        return r.json(), r.ok
+        r = requests.patch(f"{API}{path}", headers=_h(), json=json, timeout=60)
+        return _safe_json(r), r.ok
     except Exception as e:
         return {"detail": str(e)}, False
 
