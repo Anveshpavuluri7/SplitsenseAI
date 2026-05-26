@@ -30,9 +30,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def fix_database_url(cls, v: str) -> str:
-        """Convert Render's postgres:// to the asyncpg driver format."""
+        """Convert Render's postgres:// or postgresql:// to asyncpg format."""
+        if v.startswith("postgresql+asyncpg://"):
+            return v
+        if v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://"):]
         if v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            return "postgresql+asyncpg://" + v[len("postgres://"):]
         return v
 
     # --- Auth (JWT) ---
